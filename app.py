@@ -24,22 +24,22 @@ else:
 # --- STYLE DEFINITIONS ---
 STYLE_MAP = {
     "Professional Caricature": {
-        "prompt": "An extreme digital caricature, highly exaggerated facial features, big head, tiny body, funny expression, hand-drawn digital art style, high resolution",
-        "strength": 0.75  # Increased to 0.75 for more exaggeration
+        "prompt": "A professional digital caricature of the person in the image, exaggerated features, big head, expressive smile, hand-drawn digital art style, high quality",
+        "strength": 0.65  # Reverted to 0.65 for better likeness preservation
     },
     "Disney/Pixar Style": {
-        "prompt": "A high-quality 3D character render, Disney Pixar style, big expressive eyes, smooth skin, cinematic lighting, stylized animation",
-        "strength": 0.70  # Increased for more 'toon' effect
+        "prompt": "A high-quality 3D character render, Disney Pixar style, big expressive eyes, smooth skin, cinematic lighting, stylized animation look",
+        "strength": 0.60
     },
     "Comic Book Hero": {
         "prompt": "A vibrant comic book illustration, Marvel/DC style, bold ink lines, cel-shaded, superhero aesthetic",
-        "strength": 0.65
+        "strength": 0.55
     }
 }
 
 # --- MAIN UI ---
 st.title("🎨 FLUX Caricature Pro")
-st.write("Exaggeration level set to **0.75** for maximum caricature effect.")
+st.write("Exaggeration level reverted to **0.65** for a balanced likeness.")
 
 selected_style = st.sidebar.selectbox("Choose Your Style", list(STYLE_MAP.keys()))
 
@@ -53,7 +53,7 @@ if uploaded_file:
 
     if st.button("Generate My Caricature ✨"):
         with col2:
-            with st.spinner("FLUX Pro is exaggerating your features..."):
+            with st.spinner("FLUX Pro is stylizing your photo..."):
                 try:
                     cfg = STYLE_MAP[selected_style]
                     
@@ -81,7 +81,7 @@ if uploaded_file:
                     st.download_button(
                         label="📥 Download JPG",
                         data=res_bytes,
-                        file_name=f"caricature_075.jpg",
+                        file_name=f"caricature_065.jpg",
                         mime="image/jpeg"
                     )
                 except Exception as e:
