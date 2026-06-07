@@ -5,13 +5,12 @@ from PIL import Image
 import os
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="AI Caricature Studio", page_icon="🎨", layout="centered")
+st.set_page_config(page_title="FLUX Caricature Pro", page_icon="🎨", layout="centered")
 
-# Custom CSS for a cleaner look
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; border-radius: 10px; height: 3.5em; background-color: #FF4B4B; color: white; font-weight: bold; }
-    .stDownloadButton>button { width: 100%; border-radius: 10px; background-color: #28a745; color: white; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3.5em; background-color: #4F46E5; color: white; font-weight: bold; }
+    .stDownloadButton>button { width: 100%; border-radius: 10px; background-color: #10B981; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -22,79 +21,75 @@ else:
     st.error("Missing Replicate API Token! Please add it to 'Secrets' in the Streamlit Cloud Dashboard.")
     st.stop()
 
-# --- STYLE DEFINITIONS ---
+# --- STYLE DEFINITIONS FOR FLUX ---
+# prompt_strength: 0.1 is almost no change, 0.9 is a total change. 0.6 is the sweet spot for caricatures.
 STYLE_MAP = {
-    "Classic Exaggerated": {
-        "prompt": "extreme caricature, highly exaggerated facial features, big head, tiny body, funny digital art",
-        "denoising": 0.7,
-        "id_strength": 0.8
+    "Professional Caricature": {
+        "prompt": "A professional digital caricature of the person in the image, exaggerated funny features, big head, expressive smile, hand-drawn style, high resolution, detailed art",
+        "strength": 0.65
     },
-    "Disney/Pixar 3D": {
-        "prompt": "Disney Pixar character style, 3D render, expressive eyes, smooth textures, cinematic lighting",
-        "denoising": 0.5,
-        "id_strength": 0.7
+    "Pixar 3D Style": {
+        "prompt": "A high-quality 3D character render of the person, Disney Pixar style, big eyes, smooth skin, cinematic lighting, stylized animation look",
+        "strength": 0.60
     },
-    "GTA Loading Screen": {
-        "prompt": "GTA V loading screen art, thick brush strokes, high contrast, cel-shaded",
-        "denoising": 0.6,
-        "id_strength": 0.75
-    },
-    "Pencil Sketch": {
-        "prompt": "charcoal caricature sketch, artistic lines, black and white, hand-drawn",
-        "denoising": 0.8,
-        "id_strength": 0.85
+    "Comic Book Hero": {
+        "prompt": "A vibrant comic book illustration of the person, Marvel/DC style, bold lines, cel-shaded, superhero aesthetic",
+        "strength": 0.55
     }
 }
 
 # --- MAIN UI ---
-st.title("🎨 AI Caricature Studio")
-st.write("Turn your photo into a hilarious caricature using AI.")
+st.title("🎨 FLUX Caricature Pro")
+st.write("Using `flux-kontext-pro` to transform your photos.")
 
 selected_style = st.sidebar.selectbox("Choose Your Style", list(STYLE_MAP.keys()))
+st.sidebar.info("FLUX Kontext Pro is a high-fidelity model. Generation may take 20-30 seconds.")
 
-uploaded_file = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload your photo", type=["jpg", "jpeg", "png"])
 
 if uploaded_file:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.image(uploaded_file, caption="Original Photo", use_container_width=True)
+        st.image(uploaded_file, caption="Original", use_container_width=True)
 
-    if st.button("Magic Generate ✨"):
+    if st.button("Generate with FLUX Pro ✨"):
         with col2:
-            with st.spinner("Processing..."):
+            with st.spinner("FLUX is reimagining your image..."):
                 try:
                     cfg = STYLE_MAP[selected_style]
                     
-                    # UPDATED: Using the model name directly instead of the old version hash
-                    # This ensures we use the latest working version.
+                    # Call FLUX Kontext Pro
+                    # Note: FLUX models use 'image' and 'prompt_strength' for image-to-image
                     output = replicate.run(
-                        "fofr/face-to-many",
+                        "black-forest-labs/flux-kontext-pro",
                         input={
                             "image": uploaded_file,
-                            "style": "Cartoon", # Added a base style hint
                             "prompt": cfg["prompt"],
-                            "instant_id_strength": cfg["id_strength"],
-                            "denoising_strength": cfg["denoising"],
-                            "negative_prompt": "realistic, photo, ugly, blurry"
+                            "prompt_strength": cfg["strength"],
+                            "guidance": 3.5,
+                            "num_outputs": 1,
+                            "aspect_ratio": "1:1",
+                            "output_format": "webp",
+                            "output_quality": 90
                         }
                     )
 
-                    # Get Result
-                    res_url = output[0]
+                    # FLUX output is typically a list or a single URL string
+                    res_url = output[0] if isinstance(output, list) else output
                     res_bytes = requests.get(res_url).content
                     
-                    st.image(res_bytes, caption="Your Caricature", use_container_width=True)
+                    st.image(res_bytes, caption="FLUX Caricature", use_container_width=True)
 
                     st.download_button(
-                        label="📥 Download Caricature",
+                        label="📥 Download WebP",
                         data=res_bytes,
-                        file_name=f"caricature.png",
-                        mime="image/png"
+                        file_name=f"flux_caricature.webp",
+                        mime="image/webp"
                     )
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
-                    st.info("Check if your Replicate account has credits or if the API token is correct.")
+                    st.info("Ensure you have permission to use black-forest-labs/flux-kontext-pro on Replicate.")
 
 st.markdown("---")
-st.caption("Powered by Replicate AI & Streamlit Cloud")
+st.caption("Powered by Black Forest Labs & Replicate")
