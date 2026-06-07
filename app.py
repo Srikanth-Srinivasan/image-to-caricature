@@ -2,95 +2,105 @@ import streamlit as st
 import replicate
 import requests
 from PIL import Image
-import io
 import os
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="AI Caricature Studio", page_icon="🎨")
+st.set_page_config(page_title="AI Caricature Studio", page_icon="🎨", layout="centered")
 
-# Add your Replicate Token here or set it in your Environment Variables
-REPLICATE_API_TOKEN = st.sidebar.text_input("Enter Replicate API Token", type="password")
-os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN
+# Custom CSS for a cleaner look
+st.markdown("""
+    <style>
+    .stButton>button { width: 100%; border-radius: 10px; height: 3.5em; background-color: #FF4B4B; color: white; font-weight: bold; }
+    .stDownloadButton>button { width: 100%; border-radius: 10px; background-color: #28a745; color: white; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- STYLE DICTIONARY (Prompt Engineering) ---
-STYLES = {
-    "Classic Funny": {
-        "prompt": "Extreme caricature, exaggerated features, big head, small body, funny digital art, high quality",
+# --- REPLICATE AUTHENTICATION ---
+# This looks for a Secret named REPLICATE_API_TOKEN in your Streamlit Dashboard
+if "REPLICATE_API_TOKEN" in st.secrets:
+    os.environ["REPLICATE_API_TOKEN"] = st.secrets["REPLICATE_API_TOKEN"]
+else:
+    st.error("Missing Replicate API Token! Please add it to 'Secrets' in the Streamlit Cloud Dashboard.")
+    st.info("Format: REPLICATE_API_TOKEN = 'r8_your_token_here'")
+    st.stop()
+
+# --- STYLE DEFINITIONS ---
+STYLE_MAP = {
+    "Classic Exaggerated": {
+        "prompt": "extreme caricature, highly exaggerated facial features, big head, tiny body, funny digital art, professional illustration",
         "denoising": 0.7,
         "id_strength": 0.8
     },
-    "Disney/Pixar": {
-        "prompt": "3D render, Pixar style character, big expressive eyes, smooth skin, cinematic lighting, masterpiece",
+    "Disney/Pixar 3D": {
+        "prompt": "Disney Pixar character style, 3D render, expressive eyes, smooth textures, cinematic lighting, masterpiece",
         "denoising": 0.5,
         "id_strength": 0.7
     },
-    "Grand Theft Auto": {
-        "prompt": "GTA V loading screen art style, thick brush strokes, high contrast, cel-shaded, vibrant colors",
+    "GTA Loading Screen": {
+        "prompt": "GTA V loading screen art, thick brush strokes, high contrast, cel-shaded, vibrant urban colors",
         "denoising": 0.6,
         "id_strength": 0.75
     },
     "Pencil Sketch": {
-        "prompt": "Hand-drawn charcoal caricature sketch, messy lines, artistic, high contrast, black and white",
+        "prompt": "rough charcoal caricature sketch, messy artistic lines, black and white, hand-drawn on paper",
         "denoising": 0.8,
         "id_strength": 0.85
     }
 }
 
-# --- UI DESIGN ---
+# --- MAIN UI ---
 st.title("🎨 AI Caricature Studio")
-st.markdown("Upload a photo and transform it into a hilarious or artistic caricature.")
+st.write("Turn your photo into a hilarious caricature using AI.")
 
-# Sidebar for controls
-st.sidebar.header("Settings")
-selected_style = st.sidebar.selectbox("Choose a Style", list(STYLES.keys()))
-uploaded_file = st.file_uploader("Upload a clear headshot (JPG/PNG)", type=["jpg", "jpeg", "png"])
+# Sidebar for style selection only
+selected_style = st.sidebar.selectbox("Choose Your Style", list(STYLE_MAP.keys()))
+st.sidebar.markdown("---")
+st.sidebar.write("### Instructions")
+st.sidebar.write("1. Upload a clear face photo.")
+st.sidebar.write("2. Pick a style.")
+st.sidebar.write("3. Click Generate!")
 
-if uploaded_file is not None:
-    # Show Preview
-    img = Image.open(uploaded_file)
-    st.image(img, caption="Your Upload", width=300)
+uploaded_file = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"])
 
-    if st.button("Generate Caricature"):
-        if not REPLICATE_API_TOKEN:
-            st.error("Please enter your Replicate API Token in the sidebar!")
-        else:
-            with st.spinner("🧠 AI is drawing your caricature..."):
+if uploaded_file:
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.image(uploaded_file, caption="Original Photo", use_container_width=True)
+
+    if st.button("Magic Generate ✨"):
+        with col2:
+            with st.spinner("Drawing..."):
                 try:
-                    # 1. Setup Input
-                    style_cfg = STYLES[selected_style]
+                    cfg = STYLE_MAP[selected_style]
                     
-                    # 2. Call the Face-to-Many Model
-                    # This model is specifically built to keep the face recognizable
+                    # Call the AI Model
                     output = replicate.run(
                         "fofr/face-to-many:e752834f501810794c0390163013867c744c80327f29f074d284e31e5138f3f8",
                         input={
                             "image": uploaded_file,
-                            "prompt": style_cfg["prompt"],
-                            "instant_id_strength": style_cfg["id_strength"],
-                            "denoising_strength": style_cfg["denoising"],
-                            "negative_prompt": "realistic, photo, ugly, blurry, deformed eyes"
+                            "prompt": cfg["prompt"],
+                            "instant_id_strength": cfg["id_strength"],
+                            "denoising_strength": cfg["denoising"],
+                            "negative_prompt": "realistic, photo, photograph, ugly, blurry, low quality"
                         }
                     )
 
-                    # 3. Process Result
-                    result_url = output[0]
-                    res_img_data = requests.get(result_url).content
+                    # Get Result
+                    res_url = output[0]
+                    res_bytes = requests.get(res_url).content
                     
-                    # 4. Display Result
-                    st.success("Done!")
-                    st.image(res_img_data, caption=f"Style: {selected_style}")
+                    st.image(res_bytes, caption="Your Caricature", use_container_width=True)
 
-                    # 5. Download Button
+                    # Download link
                     st.download_button(
-                        label="Download Caricature",
-                        data=res_img_data,
-                        file_name=f"caricature_{selected_style.lower()}.png",
+                        label="📥 Download Caricature",
+                        data=res_bytes,
+                        file_name=f"caricature_{selected_style.lower().replace(' ', '_')}.png",
                         mime="image/png"
                     )
-
                 except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                    st.error(f"Something went wrong: {str(e)}")
 
-# --- FOOTER ---
 st.markdown("---")
-st.caption("Powered by Replicate AI and Streamlit.")
+st.caption("Powered by Replicate AI & Streamlit Cloud")
