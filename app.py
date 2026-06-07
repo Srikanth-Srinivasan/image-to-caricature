@@ -21,29 +21,27 @@ else:
     st.error("Missing Replicate API Token! Please add it to 'Secrets' in the Streamlit Cloud Dashboard.")
     st.stop()
 
-# --- STYLE DEFINITIONS FOR FLUX ---
-# prompt_strength: 0.1 is almost no change, 0.9 is a total change. 0.6 is the sweet spot for caricatures.
+# --- STYLE DEFINITIONS ---
 STYLE_MAP = {
     "Professional Caricature": {
-        "prompt": "A professional digital caricature of the person in the image, exaggerated funny features, big head, expressive smile, hand-drawn style, high resolution, detailed art",
-        "strength": 0.65
+        "prompt": "An extreme digital caricature, highly exaggerated facial features, big head, tiny body, funny expression, hand-drawn digital art style, high resolution",
+        "strength": 0.75  # Increased to 0.75 for more exaggeration
     },
-    "Pixar 3D Style": {
-        "prompt": "A high-quality 3D character render of the person, Disney Pixar style, big eyes, smooth skin, cinematic lighting, stylized animation look",
-        "strength": 0.60
+    "Disney/Pixar Style": {
+        "prompt": "A high-quality 3D character render, Disney Pixar style, big expressive eyes, smooth skin, cinematic lighting, stylized animation",
+        "strength": 0.70  # Increased for more 'toon' effect
     },
     "Comic Book Hero": {
-        "prompt": "A vibrant comic book illustration of the person, Marvel/DC style, bold lines, cel-shaded, superhero aesthetic",
-        "strength": 0.55
+        "prompt": "A vibrant comic book illustration, Marvel/DC style, bold ink lines, cel-shaded, superhero aesthetic",
+        "strength": 0.65
     }
 }
 
 # --- MAIN UI ---
 st.title("🎨 FLUX Caricature Pro")
-st.write("Using `flux-kontext-pro` to transform your photos.")
+st.write("Exaggeration level set to **0.75** for maximum caricature effect.")
 
 selected_style = st.sidebar.selectbox("Choose Your Style", list(STYLE_MAP.keys()))
-st.sidebar.info("FLUX Kontext Pro is a high-fidelity model. Generation may take 20-30 seconds.")
 
 uploaded_file = st.file_uploader("Upload your photo", type=["jpg", "jpeg", "png"])
 
@@ -51,16 +49,15 @@ if uploaded_file:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.image(uploaded_file, caption="Original", use_container_width=True)
+        st.image(uploaded_file, caption="Original Photo", use_container_width=True)
 
-    if st.button("Generate with FLUX Pro ✨"):
+    if st.button("Generate My Caricature ✨"):
         with col2:
-            with st.spinner("FLUX is reimagining your image..."):
+            with st.spinner("FLUX Pro is exaggerating your features..."):
                 try:
                     cfg = STYLE_MAP[selected_style]
                     
-                    # Call FLUX Kontext Pro
-                    # Note: FLUX models use 'image' and 'prompt_strength' for image-to-image
+                    # Run FLUX Kontext Pro
                     output = replicate.run(
                         "black-forest-labs/flux-kontext-pro",
                         input={
@@ -70,26 +67,25 @@ if uploaded_file:
                             "guidance": 3.5,
                             "num_outputs": 1,
                             "aspect_ratio": "1:1",
-                            "output_format": "webp",
-                            "output_quality": 90
+                            "output_format": "jpg",
+                            "output_quality": 95
                         }
                     )
 
-                    # FLUX output is typically a list or a single URL string
+                    # Get Result
                     res_url = output[0] if isinstance(output, list) else output
                     res_bytes = requests.get(res_url).content
                     
-                    st.image(res_bytes, caption="FLUX Caricature", use_container_width=True)
+                    st.image(res_bytes, caption="Generated Result", use_container_width=True)
 
                     st.download_button(
-                        label="📥 Download WebP",
+                        label="📥 Download JPG",
                         data=res_bytes,
-                        file_name=f"flux_caricature.webp",
-                        mime="image/webp"
+                        file_name=f"caricature_075.jpg",
+                        mime="image/jpeg"
                     )
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
-                    st.info("Ensure you have permission to use black-forest-labs/flux-kontext-pro on Replicate.")
 
 st.markdown("---")
 st.caption("Powered by Black Forest Labs & Replicate")
