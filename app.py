@@ -5,11 +5,11 @@ from PIL import Image
 import os
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Multi-Model Caricature AI", page_icon="🎨", layout="centered")
+st.set_page_config(page_title="Line Art & Caricature AI", page_icon="✏️", layout="centered")
 
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; border-radius: 10px; height: 3.5em; background-color: #4F46E5; color: white; font-weight: bold; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3.5em; background-color: #1F2937; color: white; font-weight: bold; }
     .stDownloadButton>button { width: 100%; border-radius: 10px; background-color: #10B981; color: white; }
     </style>
     """, unsafe_allow_html=True)
@@ -22,41 +22,46 @@ else:
     st.stop()
 
 # --- PROVIDER & MODEL CONFIGURATION ---
-# We use slugs (names) instead of hashes to ensure we always use the latest stable version
 PROVIDERS = {
     "Stability AI (SDXL)": {
         "model": "stability-ai/sdxl",
         "strength_param": "prompt_strength",
-        "extra_params": {"guidance_scale": 7.5, "output_format": "jpg"}
+        "extra_params": {"guidance_scale": 8.0, "output_format": "jpg"}
     },
     "Black Forest Labs (FLUX Dev)": {
         "model": "black-forest-labs/flux-dev",
         "strength_param": "prompt_strength",
         "extra_params": {"guidance": 3.5, "output_format": "jpg"}
     },
-    "Face-to-Many (Specialized)": {
+    "Face-to-Many (Identity focus)": {
         "model": "fofr/face-to-many",
         "strength_param": "denoising_strength",
-        "extra_params": {"instant_id_strength": 0.8, "style": "Cartoon"}
+        "extra_params": {"instant_id_strength": 0.8, "style": "Line Art"}
     }
 }
 
+# --- STYLES (NEW LINE DRAWING OPTIONS) ---
 STYLES = {
-    "Funny Caricature": "A professional digital caricature, exaggerated funny facial features, big head, small body, colorful hand-drawn style",
-    "Disney Pixar": "3D character render, Disney Pixar style, big expressive eyes, smooth stylized skin, cinematic 3D lighting",
-    "Comic Book": "Modern comic book illustration, bold ink lines, vibrant colors, cel-shaded superhero aesthetic",
-    "Artistic Sketch": "Hand-drawn charcoal sketch, artistic caricature lines, high contrast, black and white"
+    "Minimalist Line Art": "Clean black and white line drawing, minimalist ink strokes, white background, no shading, professional vector art style, simple outlines",
+    "Detailed Pencil Sketch": "Hand-drawn pencil sketch on textured paper, detailed graphite shading, artistic caricature style, black and white",
+    "Coloring Book Page": "Thick black outlines, coloring book style, pure white background, no colors, clean line art for kids",
+    "Classic Caricature (Color)": "Professional digital caricature, exaggerated features, big head, small body, colorful hand-drawn style",
+    "Disney Pixar": "3D character render, Disney Pixar style, big expressive eyes, smooth stylized skin, cinematic lighting"
 }
 
 # --- SIDEBAR UI ---
-st.sidebar.title("Configuration")
-selected_provider = st.sidebar.selectbox("Select AI Provider", list(PROVIDERS.keys()))
-selected_style = st.sidebar.selectbox("Select Art Style", list(STYLES.keys()))
-exaggeration = st.sidebar.slider("Exaggeration Level", 0.4, 0.9, 0.65, help="Higher = More AI change, Lower = More like original photo")
+st.sidebar.title("Line Art Settings")
+selected_provider = st.sidebar.selectbox("AI Provider", list(PROVIDERS.keys()))
+selected_style = st.sidebar.selectbox("Art Style", list(STYLES.keys()))
+
+# Suggestion for Line Drawing: Use a higher exaggeration for Line Art (around 0.75)
+default_strength = 0.75 if "Line" in selected_style or "Book" in selected_style else 0.65
+exaggeration = st.sidebar.slider("Exaggeration Level", 0.4, 0.9, default_strength, 
+                               help="For Line Art, a higher level (0.75+) helps strip away the original photo's colors.")
 
 # --- MAIN UI ---
-st.title("🎨 Multi-Model Caricature AI")
-st.write(f"Currently using: **{selected_provider}**")
+st.title("✏️ Line Art & Caricature Studio")
+st.write(f"Style: **{selected_style}** | Provider: **{selected_provider}**")
 
 uploaded_file = st.file_uploader("Upload a face photo", type=["jpg", "jpeg", "png"])
 
@@ -66,41 +71,41 @@ if uploaded_file:
     with col1:
         st.image(uploaded_file, caption="Original Photo", use_container_width=True)
 
-    if st.button("Generate My Caricature ✨"):
+    if st.button("Generate Art ✨"):
         with col2:
-            with st.spinner(f"Requesting from {selected_provider}..."):
+            with st.spinner(f"Creating your {selected_style.lower()}..."):
                 try:
-                    # 1. Get configuration for chosen provider
                     config = PROVIDERS[selected_provider]
                     prompt = STYLES[selected_style]
                     
-                    # 2. Build input dictionary dynamically
+                    # Extra negative prompt to ensure B&W for line art
+                    neg_prompt = "color, colorful, painting, photo, photorealistic, blurry, gray background" if "Line" in selected_style else "ugly, blurry, distorted"
+
                     input_data = {
                         "image": uploaded_file,
                         "prompt": prompt,
                         config["strength_param"]: exaggeration,
+                        "negative_prompt": neg_prompt
                     }
-                    # Add any provider-specific extra parameters
                     input_data.update(config["extra_params"])
 
-                    # 3. Run Replicate
+                    # Run Replicate
                     output = replicate.run(config["model"], input=input_data)
 
-                    # 4. Handle Result
+                    # Handle Result
                     res_url = output[0] if isinstance(output, list) else output
                     res_bytes = requests.get(res_url).content
                     
-                    st.image(res_bytes, caption=f"Result ({selected_provider})", use_container_width=True)
+                    st.image(res_bytes, caption="Final Result", use_container_width=True)
 
                     st.download_button(
-                        label="📥 Download JPG",
+                        label="📥 Download Image",
                         data=res_bytes,
-                        file_name=f"caricature_{selected_provider.split()[0].lower()}.jpg",
+                        file_name=f"line_art_{selected_provider.split()[0].lower()}.jpg",
                         mime="image/jpeg"
                     )
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
-                    st.info("Tip: If you get a permission error, visit Replicate.com, find this model, and run it once on the website to accept their terms.")
 
 st.markdown("---")
-st.caption("This app automatically connects to the latest stable versions of Stability AI, FLUX, and Face-to-Many.")
+st.info("💡 **Pro Tip for Line Art:** If the result has too much color, move the **Exaggeration Level** up to 0.80 or 0.85.")
