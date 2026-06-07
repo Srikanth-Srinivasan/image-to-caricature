@@ -5,12 +5,12 @@ from PIL import Image
 import os
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="FLUX Caricature Pro", page_icon="🎨", layout="centered")
+st.set_page_config(page_title="Stability Caricature Studio", page_icon="🖌️", layout="centered")
 
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; border-radius: 10px; height: 3.5em; background-color: #4F46E5; color: white; font-weight: bold; }
-    .stDownloadButton>button { width: 100%; border-radius: 10px; background-color: #10B981; color: white; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3.5em; background-color: #007BFF; color: white; font-weight: bold; }
+    .stDownloadButton>button { width: 100%; border-radius: 10px; background-color: #28A745; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -22,24 +22,25 @@ else:
     st.stop()
 
 # --- STYLE DEFINITIONS ---
+# Stability AI SDXL uses 'prompt_strength' to control the transformation.
 STYLE_MAP = {
-    "Professional Caricature": {
-        "prompt": "A professional digital caricature of the person in the image, exaggerated features, big head, expressive smile, hand-drawn digital art style, high quality",
-        "strength": 0.65  # Reverted to 0.65 for better likeness preservation
+    "Classic Caricature": {
+        "prompt": "Professional digital caricature, exaggerated funny facial features, big head, tiny body, colorful hand-drawn style, high detail, masterpiece",
+        "strength": 0.65
     },
-    "Disney/Pixar Style": {
-        "prompt": "A high-quality 3D character render, Disney Pixar style, big expressive eyes, smooth skin, cinematic lighting, stylized animation look",
+    "Pixar Animation": {
+        "prompt": "Disney Pixar 3D character style, big expressive eyes, smooth textures, cinematic 3D render, cute stylized look",
         "strength": 0.60
     },
-    "Comic Book Hero": {
-        "prompt": "A vibrant comic book illustration, Marvel/DC style, bold ink lines, cel-shaded, superhero aesthetic",
+    "Superhero Comic": {
+        "prompt": "Modern comic book art style, bold ink lines, vibrant colors, superhero character design, cel-shaded illustration",
         "strength": 0.55
     }
 }
 
 # --- MAIN UI ---
-st.title("🎨 FLUX Caricature Pro")
-st.write("Exaggeration level reverted to **0.65** for a balanced likeness.")
+st.title("🖌️ Stability Caricature Studio")
+st.write("Using **Stability AI (SDXL)** to transform your photo.")
 
 selected_style = st.sidebar.selectbox("Choose Your Style", list(STYLE_MAP.keys()))
 
@@ -53,22 +54,22 @@ if uploaded_file:
 
     if st.button("Generate My Caricature ✨"):
         with col2:
-            with st.spinner("FLUX Pro is stylizing your photo..."):
+            with st.spinner("Stability AI is processing..."):
                 try:
                     cfg = STYLE_MAP[selected_style]
                     
-                    # Run FLUX Kontext Pro
+                    # Run Stability AI SDXL (Image-to-Image)
                     output = replicate.run(
-                        "black-forest-labs/flux-kontext-pro",
+                        "stability-ai/sdxl:7762d339291264c5029e24b4249a4f4d2f09923835f1f9435b540f2e08816c7f",
                         input={
                             "image": uploaded_file,
                             "prompt": cfg["prompt"],
                             "prompt_strength": cfg["strength"],
-                            "guidance": 3.5,
+                            "negative_prompt": "photorealistic, ugly, blurry, low quality, distorted",
                             "num_outputs": 1,
-                            "aspect_ratio": "1:1",
-                            "output_format": "jpg",
-                            "output_quality": 95
+                            "guidance_scale": 7.5,
+                            "refine": "expert_ensemble_refiner",
+                            "apply_watermark": False
                         }
                     )
 
@@ -76,16 +77,16 @@ if uploaded_file:
                     res_url = output[0] if isinstance(output, list) else output
                     res_bytes = requests.get(res_url).content
                     
-                    st.image(res_bytes, caption="Generated Result", use_container_width=True)
+                    st.image(res_bytes, caption="Stability Result", use_container_width=True)
 
                     st.download_button(
                         label="📥 Download JPG",
                         data=res_bytes,
-                        file_name=f"caricature_065.jpg",
+                        file_name=f"stability_caricature.jpg",
                         mime="image/jpeg"
                     )
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
 
 st.markdown("---")
-st.caption("Powered by Black Forest Labs & Replicate")
+st.caption("Powered by Stability AI & Replicate")
